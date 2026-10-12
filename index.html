@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>喜宴座位表</title>
+<style>
+:root{--bg:#fffaf5;--card:#fff;--ink:#3a2a2a;--mute:#8a7a7a;--acc:#c0485a;--line:#ecdcd6;--full:#f3e9e6;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#1e1819;--card:#2a2122;--ink:#f3e8e6;--mute:#a89a98;--acc:#e8788a;--line:#4a3b3d;--full:#352a2c}}
+:root[data-theme="dark"]{--bg:#1e1819;--card:#2a2122;--ink:#f3e8e6;--mute:#a89a98;--acc:#e8788a;--line:#4a3b3d;--full:#352a2c}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,"PingFang TC","Noto Sans TC",sans-serif;padding:12px}
+h1{font-size:20px;margin:4px 0 2px;text-align:center}
+.sub{text-align:center;color:var(--mute);font-size:13px;margin-bottom:10px}
+input,select,button{font:inherit;font-size:16px}
+input,select{padding:9px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink);min-width:0}
+button{padding:9px 14px;border:0;border-radius:10px;background:var(--acc);color:#fff}
+.bar{display:flex;gap:6px;max-width:560px;margin:0 auto 8px}
+.bar input{flex:1}
+.bar select{width:96px}
+#err{color:var(--acc);text-align:center;font-size:13px;min-height:18px}
+.tools{max-width:560px;margin:0 auto 10px;display:flex;gap:6px}
+.tools input{flex:1}
+.tools button.g{background:var(--card);color:var(--ink);border:1px solid var(--line)}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;max-width:760px;margin:0 auto}
+@media(min-width:560px){.grid{grid-template-columns:repeat(5,1fr)}}
+.t{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px;cursor:pointer;min-height:84px;overflow:hidden}
+.t.full{background:var(--full)}
+.t.hit{outline:2px solid var(--acc)}
+.t h3{margin:0 0 3px;font-size:13px;display:flex;justify-content:space-between;gap:4px}
+.t h3 b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.t h3 span{color:var(--mute);font-weight:400;flex:none}
+.t.full h3 span{color:var(--acc)}
+.t p{margin:0;font-size:12px;color:var(--mute);line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.un{max-width:760px;margin:0 auto 10px;text-align:center}
+.un button{background:var(--card);color:var(--acc);border:1px dashed var(--acc)}
+.sheet{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:flex-end;justify-content:center;z-index:9}
+.sheet.on{display:flex}
+.box{background:var(--bg);width:100%;max-width:560px;max-height:82%;overflow:auto;border-radius:16px 16px 0 0;padding:14px 14px calc(14px + env(safe-area-inset-bottom,0px))}
+.hd{display:flex;gap:6px;margin-bottom:8px}
+.hd input{flex:1;font-weight:600}
+.hd button.x{background:var(--card);color:var(--ink);border:1px solid var(--line)}
+.cnt{font-size:13px;color:var(--mute);margin-bottom:4px}
+.p{display:flex;align-items:center;justify-content:space-between;gap:6px;padding:7px 0;border-top:1px dashed var(--line)}
+.p b{font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.p select{width:112px;padding:5px;font-size:14px}
+.p .d{background:none;color:var(--mute);padding:4px 8px;font-size:14px}
+.t .nm{font-size:13px;font-weight:600;color:var(--acc);margin:0 0 3px;line-height:1.25;word-break:break-all}
+.grid.list{grid-template-columns:1fr}
+.grid.list .t{min-height:0;display:block}
+.grid.list .t p{display:block;-webkit-line-clamp:unset;font-size:13px}
+.tools .v{background:var(--card);color:var(--ink);border:1px solid var(--line);padding:9px 10px;font-size:14px;white-space:nowrap}
+.tools .v.on{background:var(--acc);color:#fff;border-color:var(--acc)}
+.msg{text-align:center;color:var(--mute);padding:20px}
+.empty{color:var(--mute);padding:10px 0;font-size:14px}
+</style>
+</head>
+<body>
+<h1>💒 喜宴座位表</h1>
+<div class="sub">每桌 10 人・共 30 桌｜點桌子可看名單、改桌名、換桌</div>
+<div class="bar"><input id="name" placeholder="你的名字" maxlength="20"><select id="pick"></select><button id="addBtn">加入</button></div>
+<div id="err"></div>
+<div class="tools"><input id="q" placeholder="搜尋名字…"><button class="g" id="clr">清除</button><button class="v" id="vg">方塊</button><button class="v" id="vl">條列</button></div>
+<div id="root"><div class="msg">載入中…</div></div>
+<div class="sheet" id="sheet"><div class="box" id="box"></div></div>
+<script>
+const CAP=10, N=30;
+let db=null, guests=[], names={}, open=null, q='', view='grid';
+try{view=localStorage.getItem('view')==='list'?'list':'grid'}catch(e){}
+function setView(v){view=v;try{localStorage.setItem('view',v)}catch(e){}render()}
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const tname=i=>'第'+i+'桌'+(names[i]?'・'+names[i]:'');
+const count=t=>guests.filter(g=>g.table===t).length;
+function err(m){$('err').textContent=m;if(m)setTimeout(()=>{if($('err').textContent===m)$('err').textContent=''},3500)}
+function opts(cur,withUn){
+  let h=withUn?'<option value="0"'+(cur===0?' selected':'')+'>未分桌</option>':'<option value="0">選桌（可稍後）</option>';
+  for(let i=1;i<=N;i++){const full=count(i)>=CAP&&cur!==i;h+='<option value="'+i+'"'+(cur===i?' selected':'')+(full?' disabled':'')+'>'+esc(tname(i))+(full?'(滿)':'')+'</option>'}
+  return h;
+}
+function matches(g){return q&&g.name.toLowerCase().includes(q)}
+function render(){
+  const un=guests.filter(g=>!g.table);
+  let h='';
+  if(un.length)h+='<div class="un"><button data-t="0">未分桌 '+un.length+' 人（點開處理）</button></div>';
+  h+='<div class="grid'+(view==='list'?' list':'')+'">';
+  for(let i=1;i<=N;i++){
+    const m=guests.filter(g=>g.table===i);
+    const hit=q&&m.some(matches);
+    h+='<div class="t'+(m.length>=CAP?' full':'')+(hit?' hit':'')+'" data-t="'+i+'"><h3><b>第'+i+'桌</b><span>'+m.length+'/'+CAP+'</span></h3>'+(names[i]?'<div class="nm">'+esc(names[i])+'</div>':'')+'<p>'+(m.length?esc(m.map(g=>g.name).join('、')):'空桌')+'</p></div>';
+  }
+  h+='</div>';
+  $('root').innerHTML=h;
+  $('vg').classList.toggle('on',view==='grid');$('vl').classList.toggle('on',view==='list');
+  const cur=$('pick').value;$('pick').innerHTML=opts(0,false);$('pick').value=cur||'0';
+  if(open!==null)renderSheet(true);
+}
+function person(g){return '<div class="p"><b>'+esc(g.name)+'</b><span style="display:flex;gap:2px"><select data-id="'+g.id+'">'+opts(g.table,true)+'</select><button class="d" data-del="'+g.id+'">✕</button></span></div>'}
+function renderSheet(keep){
+  const t=open, m=guests.filter(g=>g.table===t);
+  if(!keep||!document.getElementById('tn')){
+    $('box').innerHTML=(t>0?'<div class="hd"><input id="tn" maxlength="12" placeholder="第'+t+'桌・自訂桌名（可留空）" value="'+esc(names[t]||'')+'"><button class="x" id="close">關閉</button></div>':'<div class="hd"><b style="flex:1;align-self:center">未分桌</b><button class="x" id="close">關閉</button></div>')+'<div class="cnt" id="cn"></div><div id="lst"></div>';
+    $('close').onclick=closeSheet;
+    if(t>0)$('tn').onchange=saveName;
+  }
+  if($('cn'))$('cn').textContent=t>0?(tname(t)+'・'+m.length+'/'+CAP+' 人'):(m.length+' 人');
+  $('lst').innerHTML=m.length?m.map(person).join(''):'<div class="empty">目前沒有人</div>';
+}
+function openSheet(t){open=t;renderSheet(false);$('sheet').classList.add('on')}
+function closeSheet(){open=null;$('sheet').classList.remove('on')}
+async function saveName(){
+  if(!db||!open)return;
+  try{await db.collection('tables').doc(String(open)).set({name:$('tn').value.trim()})}catch(e){err('桌名儲存失敗')}
+}
+async function move(id,t){
+  if(!db)return;
+  if(t>0&&count(t)>=CAP){err('這桌已滿 10 人');render();return}
+  try{await db.collection('guests').doc(id).update({table:t})}catch(e){err('更新失敗，請重試');render()}
+}
+$('root').addEventListener('click',e=>{const c=e.target.closest('[data-t]');if(c)openSheet(parseInt(c.dataset.t,10))});
+$('sheet').addEventListener('click',async e=>{
+  if(e.target===$('sheet'))return closeSheet();
+  const d=e.target.closest('[data-del]');
+  if(d&&db&&confirm('確定移除這位賓客？')){try{await db.collection('guests').doc(d.dataset.del).delete()}catch(x){err('刪除失敗')}}
+});
+$('sheet').addEventListener('change',e=>{if(e.target.matches('select[data-id]'))move(e.target.dataset.id,parseInt(e.target.value,10))});
+$('q').oninput=e=>{q=e.target.value.trim().toLowerCase();render()};
+$('vg').onclick=()=>setView('grid');$('vl').onclick=()=>setView('list');
+$('clr').onclick=()=>{$('q').value='';q='';render()};
+$('addBtn').onclick=async()=>{
+  const n=$('name').value.trim(), t=parseInt($('pick').value,10)||0;
+  if(!n){err('請輸入名字');return}
+  if(!db){err('目前無法寫入');return}
+  if(guests.some(g=>g.name===n)){err('這個名字已經在名單中');return}
+  if(t>0&&count(t)>=CAP){err('這桌已滿 10 人');return}
+  try{await db.collection('guests').add({name:n,table:t,at:Date.now()});$('name').value=''}catch(e){err('加入失敗，可能沒有編輯權限')}
+};
+$('name').addEventListener('keydown',e=>{if(e.key==='Enter')$('addBtn').click()});
+$('pick').innerHTML=opts(0,false);
+(async()=>{
+  try{db=await claude.use('db')}catch(e){db=null}
+  if(!db){$('root').innerHTML='<div class="msg">請登入 Claude 後開啟此連結，才能查看與編輯座位表。</div>';return}
+  db.collection('guests').onSnapshot(s=>{guests=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(a.at||0)-(b.at||0));render()},e=>{$('root').innerHTML='<div class="msg">無法讀取資料（'+esc(e.code||'error')+'）</div>'});
+  db.collection('tables').onSnapshot(s=>{names={};s.docs.forEach(d=>{const v=d.data()||{};if(v.name)names[d.id]=v.name});render()},()=>{});
+})();
+</script>
+</body>
+</html>
